@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-07-22
+
+### Features
+
+- **Terminal auth (`--setup`)**: interactively collect and save the Codebuff API
+  key. The agent now advertises a `terminal` auth method (`args: ["--setup"]`)
+  in its `initialize` response, so ACP clients (e.g. Zed) can offer a
+  "Configure Codebuff" action. The key is stored at
+  `~/.codebuff-acp/config.json`; `CODEBUFF_API_KEY` still takes precedence.
+  Required for listing in the
+  [ACP registry](https://github.com/agentclientprotocol/registry).
+
 ## [0.1.0] - 2026-07-21
 
 Initial public release of `codebuff-agent-acp`, an unofficial

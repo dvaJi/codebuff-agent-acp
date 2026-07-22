@@ -1,6 +1,6 @@
 {
   "name": "codebuff-agent-acp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Use the Codebuff agent engine from any ACP-compatible client",
   "type": "module",
   "publishConfig": {
