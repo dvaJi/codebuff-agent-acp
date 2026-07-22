@@ -8,10 +8,10 @@
  */
 
 import { promises as fs } from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 
 import type { RunState } from "@codebuff/sdk";
+import { configHome } from "./config.js";
 
 export interface SessionRecord {
   sessionId: string;
@@ -29,10 +29,7 @@ export interface SessionRecord {
  * `CODEBUFF_ACP_HOME`) are respected without a process restart.
  */
 function storeDir(): string {
-  const home = process.env.CODEBUFF_ACP_HOME;
-  return home
-    ? path.join(home, "sessions")
-    : path.join(os.homedir(), ".codebuff-acp", "sessions");
+  return path.join(configHome(), "sessions");
 }
 
 function fileFor(sessionId: string): string {

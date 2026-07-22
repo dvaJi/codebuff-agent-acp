@@ -121,14 +121,33 @@ check`, builds, and runs `npm publish --provenance --access public`
 
 ## Configuration
 
+The Codebuff API key is resolved in this order:
+
+1. `CODEBUFF_API_KEY` environment variable.
+2. The key saved by `--setup` (below), stored at
+   `~/.codebuff-acp/config.json`.
+
+### Interactive setup (Terminal Auth)
+
+```bash
+npx codebuff-agent-acp --setup
+```
+
+Prompts for your Codebuff API key (get one from
+<https://codebuff.com> → Profile → API Keys) and saves it locally. ACP clients
+that drive the agent can also trigger this via the `terminal` auth method
+advertised in `initialize` (`args: ["--setup"]`).
+
+### Environment variables
+
 | Env var             | Default           | Description                                         |
 | ------------------- | ----------------- | --------------------------------------------------- |
-| `CODEBUFF_API_KEY`  | _none_            | Required Codebuff API key                           |
+| `CODEBUFF_API_KEY`  | _none_            | Codebuff API key (overrides the saved key)          |
 | `CODEBUFF_AGENT`    | `base`            | Codebuff agent id to run (e.g. `base`, `base_free`) |
-| `CODEBUFF_ACP_HOME` | `~/.codebuff-acp` | Where session files are stored                      |
+| `CODEBUFF_ACP_HOME` | `~/.codebuff-acp` | Where config + session files are stored             |
 
 A client may also pass an API key at runtime via the `authenticate` request's
-`_meta.codebuff.apiKey`.
+`_meta.codebuff.apiKey` (it's persisted for future sessions).
 
 ## Limitations
 

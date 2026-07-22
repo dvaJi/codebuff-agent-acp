@@ -11,6 +11,7 @@ import {
   registerAcpHandlers,
   type CodebuffClientLike,
 } from "../src/agent.js";
+import { loadConfig } from "../src/config.js";
 
 /* -------------------------------------------------------------------------- */
 /* Fake Codebuff client                                                        */
@@ -171,6 +172,32 @@ describe("initialization", () => {
     expect(res.agentCapabilities?.loadSession).toBe(true);
     expect(res.agentCapabilities?.promptCapabilities?.image).toBe(true);
     expect(res.agentInfo?.name).toBe("codebuff-agent-acp");
+    close();
+  });
+
+  it("advertises a terminal auth method that runs --setup", async () => {
+    const { api, close } = setup([]);
+    const init = await api.request(acp.methods.agent.initialize, {
+      protocolVersion: acp.PROTOCOL_VERSION,
+      clientCapabilities: {},
+    });
+    type TerminalAuth = Extract<acp.AuthMethod, { type: "terminal" }>;
+    const terminal = init.authMethods?.find(
+      (m): m is TerminalAuth => (m as { type?: string }).type === "terminal",
+    );
+    expect(terminal).toBeDefined();
+    expect(terminal?.id).toBe("codebuff-api-key");
+    expect(terminal?.args).toContain("--setup");
+    close();
+  });
+
+  it("persists an API key passed via authenticate", async () => {
+    const { api, close } = setup([]);
+    await api.request(acp.methods.agent.authenticate, {
+      methodId: "codebuff-api-key",
+      _meta: { codebuff: { apiKey: "cb_persisted" } },
+    });
+    expect(await loadConfig()).toEqual({ apiKey: "cb_persisted" });
     close();
   });
 });

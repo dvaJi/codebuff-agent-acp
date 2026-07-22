@@ -21,6 +21,7 @@ import {
 } from "@codebuff/sdk";
 
 import { promptToCodebuff, textFromOutput } from "./converters.js";
+import { loadConfig, saveConfig } from "./config.js";
 import {
   isGatedTool,
   toolKind,
@@ -81,12 +82,26 @@ export class CodebuffAcpAgent {
     apiKey: string;
     cwd: string;
   }) => CodebuffClientLike;
-  private apiKey = process.env.CODEBUFF_API_KEY ?? "";
+  /** Resolved lazily (env var > saved config) and cached for the process. */
+  private apiKeyCache?: Promise<string>;
 
   constructor(opts: CodebuffAcpAgentOptions = {}) {
     this.clientFactory =
       opts.clientFactory ??
       ((o) => new CodebuffClient(o) as CodebuffClientLike);
+  }
+
+  /** Resolve the Codebuff API key: `CODEBUFF_API_KEY` env var wins, then the
+   *  value saved by `--setup` (Terminal Auth). Cached after first resolution. */
+  private resolveApiKey(): Promise<string> {
+    if (!this.apiKeyCache) {
+      this.apiKeyCache = (async () => {
+        const env = process.env.CODEBUFF_API_KEY;
+        if (env) return env;
+        return (await loadConfig()).apiKey ?? "";
+      })();
+    }
+    return this.apiKeyCache;
   }
 
   /** ---- lifecycle handlers ---- */
@@ -117,7 +132,16 @@ export class CodebuffAcpAgent {
         title: "Codebuff",
         version: VERSION,
       },
-      authMethods: [],
+      authMethods: [
+        {
+          id: "codebuff-api-key",
+          name: "Configure Codebuff API key",
+          description:
+            "Prompt for your Codebuff API key (from https://codebuff.com) and save it locally for future sessions.",
+          type: "terminal",
+          args: ["--setup"],
+        },
+      ],
     };
   }
 
@@ -126,7 +150,14 @@ export class CodebuffAcpAgent {
   ): Promise<acp.AuthenticateResponse | void> {
     const key = (params as { _meta?: { codebuff?: { apiKey?: string } } })._meta
       ?.codebuff?.apiKey;
-    if (key) this.apiKey = key;
+    if (key) {
+      // Override the cached key for any client built afterwards, and persist
+      // so later processes pick it up.
+      this.apiKeyCache = Promise.resolve(key);
+      await saveConfig({ apiKey: key }).catch((err) =>
+        console.error("Failed to save Codebuff config:", err),
+      );
+    }
     return {};
   }
 
@@ -438,7 +469,7 @@ export class CodebuffAcpAgent {
       // Lazily construct the Codebuff client on first prompt so that sessions
       // can be created without an API key (the error surfaces only when the
       // user actually sends a message).
-      const cb = (session.client ??= this.buildClient(session.cwd));
+      const cb = (session.client ??= await this.buildClient(session.cwd));
       result = await cb.run({
         agent: DEFAULT_AGENT_ID,
         prompt: promptString,
@@ -642,8 +673,8 @@ export class CodebuffAcpAgent {
     return session;
   }
 
-  private buildClient(cwd: string): CodebuffClientLike {
-    return this.clientFactory({ apiKey: this.apiKey, cwd });
+  private async buildClient(cwd: string): Promise<CodebuffClientLike> {
+    return this.clientFactory({ apiKey: await this.resolveApiKey(), cwd });
   }
 
   private async replayHistory(
